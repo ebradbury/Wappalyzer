@@ -23,23 +23,20 @@ class Wappalyzer(object):
             with open(apps_file_path) as apps_file:
                 self._apps_json = json.load(apps_file)
                 
-                self.apps = self._apps_json['apps']
                 self.categories = self._apps_json['categories']
-                
-                # Pre-compile some regex
-                for app_name,app_data in self.apps.iteritems():
-                    new_app_data = app_data.copy()
-                    
-                    for k,v in app_data.iteritems():
-                        if k in ('url', 'html', 'script'):
-                            new_app_data[k + '_regex'] = re.compile(v, re.I)
-                    
-                    self.apps[app_name] = new_app_data
-                
         except IOError as e:
             print "Error opening apps.json: %s" % e
     
-    def analyze(self, url):
+    def analyze(self, url, find_apps=None):
+        self.apps = self._apps_json['apps']
+        
+        if find_apps != None:
+            for k in self.apps.keys():
+                if k not in find_apps:
+                    del self.apps[k]
+        
+        self.precompile_regex()
+        
         self.response = requests.get(url, headers={'User-Agent': choice(USER_AGENTS)})
         
         self.parse_document()
@@ -80,7 +77,17 @@ class Wappalyzer(object):
                         continue
                     
         return detected_apps
-                    
+    
+    def precompile_regex(self):
+        for app_name,app_data in self.apps.iteritems():
+            new_app_data = app_data.copy()
+            
+            for k,v in app_data.iteritems():
+                if k in ('url', 'html', 'script'):
+                    new_app_data[k + '_regex'] = re.compile(v, re.I)
+            
+            self.apps[app_name] = new_app_data
+    
     def parse_document(self):
         self.script_tags = []
         self.meta_tags = []
